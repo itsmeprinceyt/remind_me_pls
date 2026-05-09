@@ -4,16 +4,10 @@ import 'services/notification_service.dart';
 import 'screens/home_screen.dart';
 import 'screens/manage_alarms_screen.dart';
 
-// Global navigator key so we can route from notification tap callbacks
-// which run outside the widget tree.
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
-// ── Notification tap handler (top-level, required for background callbacks) ──
-
 @pragma('vm:entry-point')
-void notificationTapBackground(NotificationResponse response) {
-  // Minimal handler — the foreground handler below does the actual routing.
-}
+void notificationTapBackground(NotificationResponse response) {}
 
 void onNotificationTap(NotificationResponse response) {
   navigatorKey.currentState?.pushAndRemoveUntil(
@@ -23,7 +17,6 @@ void onNotificationTap(NotificationResponse response) {
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
-
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
