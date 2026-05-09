@@ -23,10 +23,13 @@ class _CreateAlarmScreenState extends State<CreateAlarmScreen> {
   RecurrenceType _recurrence = RecurrenceType.once;
   bool _autoDelete = false;
   bool _isSaving = false;
+  int _hourlyInterval = 1; // Custom hours for hourly recurrence
+  final _hourIntervalController = TextEditingController(text: '1');
 
   @override
   void dispose() {
     _labelController.dispose();
+    _hourIntervalController.dispose();
     super.dispose();
   }
 
@@ -109,6 +112,9 @@ class _CreateAlarmScreenState extends State<CreateAlarmScreen> {
         recurrence: _recurrence,
         autoDelete: _autoDelete,
         notificationId: nextId,
+        hourlyInterval: _recurrence == RecurrenceType.hourly
+            ? _hourlyInterval
+            : 1,
       );
 
       final id = await DatabaseHelper.instance.insertAlarm(alarm);
@@ -162,7 +168,7 @@ class _CreateAlarmScreenState extends State<CreateAlarmScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         children: [
           // ── Label ──────────────────────────────────────────────────────
-          _SectionLabel(label: 'Label', icon: LucideIcons.tag),
+          const _SectionLabel(label: 'Label', icon: LucideIcons.tag),
           const SizedBox(height: 8),
           TextField(
             controller: _labelController,
@@ -186,7 +192,7 @@ class _CreateAlarmScreenState extends State<CreateAlarmScreen> {
           const SizedBox(height: 28),
 
           // ── Date ───────────────────────────────────────────────────────
-          _SectionLabel(label: 'Date', icon: LucideIcons.calendar),
+          const _SectionLabel(label: 'Date', icon: LucideIcons.calendar),
           const SizedBox(height: 8),
           _PickerTile(
             icon: LucideIcons.calendar,
@@ -197,7 +203,7 @@ class _CreateAlarmScreenState extends State<CreateAlarmScreen> {
           const SizedBox(height: 16),
 
           // ── Time ───────────────────────────────────────────────────────
-          _SectionLabel(label: 'Time', icon: LucideIcons.clock),
+          const _SectionLabel(label: 'Time', icon: LucideIcons.clock),
           const SizedBox(height: 8),
           _PickerTile(
             icon: LucideIcons.clock,
@@ -208,17 +214,48 @@ class _CreateAlarmScreenState extends State<CreateAlarmScreen> {
           const SizedBox(height: 28),
 
           // ── Recurrence ─────────────────────────────────────────────────
-          _SectionLabel(label: 'Repeat', icon: LucideIcons.repeat),
+          const _SectionLabel(label: 'Repeat', icon: LucideIcons.repeat),
           const SizedBox(height: 12),
           _RecurrencePicker(
             current: _recurrence,
-            onChanged: (r) => setState(() => _recurrence = r),
+            onChanged: (r) => setState(() {
+              _recurrence = r;
+              // Reset hourly interval when switching to hourly
+              if (r == RecurrenceType.hourly && _hourlyInterval == 24) {
+                _hourlyInterval = 1;
+                _hourIntervalController.text = '1';
+              }
+            }),
           ),
+
+          // ── Hour Interval Selector (only for hourly) ────────────────
+          if (_recurrence == RecurrenceType.hourly) ...[
+            const SizedBox(height: 16),
+            const _SectionLabel(
+              label: 'Every X Hours',
+              icon: LucideIcons.clock4,
+            ),
+            const SizedBox(height: 8),
+            _HourIntervalSelector(
+              interval: _hourlyInterval,
+              onChanged: (value) {
+                setState(() {
+                  if (value >= 24) {
+                    // Switch to daily if 24 hours selected
+                    _recurrence = RecurrenceType.daily;
+                    _hourlyInterval = 24;
+                  } else {
+                    _hourlyInterval = value;
+                  }
+                });
+              },
+            ),
+          ],
 
           const SizedBox(height: 28),
 
           // ── Options ────────────────────────────────────────────────────
-          _SectionLabel(label: 'Options', icon: LucideIcons.settings2),
+          const _SectionLabel(label: 'Options', icon: LucideIcons.settings2),
           const SizedBox(height: 8),
           _ToggleTile(
             icon: LucideIcons.trash2,
@@ -285,6 +322,127 @@ class _CreateAlarmScreenState extends State<CreateAlarmScreen> {
       'Dec',
     ];
     return '${d.day} ${months[d.month - 1]} ${d.year}';
+  }
+}
+
+// ── Hour Interval Selector ────────────────────────────────────────────────────
+
+class _HourIntervalSelector extends StatelessWidget {
+  final int interval;
+  final ValueChanged<int> onChanged;
+
+  const _HourIntervalSelector({
+    required this.interval,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A1A1A),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '$interval ${interval == 1 ? 'hour' : 'hours'}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: interval == 24
+                      ? Colors.orangeAccent.withValues(alpha: 0.1)
+                      : Colors.tealAccent.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: interval == 24
+                        ? Colors.orangeAccent.withValues(alpha: 0.3)
+                        : Colors.tealAccent.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Text(
+                  interval == 24 ? 'Switching to Daily' : 'Custom',
+                  style: TextStyle(
+                    color: interval == 24
+                        ? Colors.orangeAccent
+                        : Colors.tealAccent,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SliderTheme(
+            data: SliderThemeData(
+              activeTrackColor: Colors.white,
+              inactiveTrackColor: Colors.grey[800],
+              thumbColor: Colors.white,
+              overlayColor: Colors.white.withValues(alpha: 0.1),
+              trackHeight: 4,
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
+              overlayShape: const RoundSliderOverlayShape(overlayRadius: 20),
+            ),
+            child: Slider(
+              value: interval.toDouble(),
+              min: 1,
+              max: 24,
+              divisions: 23,
+              label: '$interval ${interval == 1 ? 'hour' : 'hours'}',
+              onChanged: (value) => onChanged(value.round()),
+            ),
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '1h',
+                style: TextStyle(color: Colors.grey[600], fontSize: 11),
+              ),
+              Text(
+                '6h',
+                style: TextStyle(color: Colors.grey[600], fontSize: 11),
+              ),
+              Text(
+                '12h',
+                style: TextStyle(color: Colors.grey[600], fontSize: 11),
+              ),
+              Text(
+                '18h',
+                style: TextStyle(color: Colors.grey[600], fontSize: 11),
+              ),
+              Text(
+                '24h→Daily',
+                style: TextStyle(color: Colors.orangeAccent[200], fontSize: 11),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            interval == 24
+                ? '24 hours will switch to Every Day recurrence'
+                : 'Alarm will repeat every $interval ${interval == 1 ? 'hour' : 'hours'}',
+            style: TextStyle(
+              color: Colors.grey[600],
+              fontSize: 11,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -471,7 +629,7 @@ class _ToggleTile extends StatelessWidget {
           Switch(
             value: value,
             onChanged: onChanged,
-            activeColor: Colors.white,
+            activeThumbColor: Colors.white,
             activeTrackColor: Colors.grey[700],
             inactiveThumbColor: Colors.grey[600],
             inactiveTrackColor: Colors.grey[900],

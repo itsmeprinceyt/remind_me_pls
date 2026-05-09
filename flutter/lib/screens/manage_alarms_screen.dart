@@ -1,3 +1,5 @@
+// lib/screens/manage_alarm.dart
+
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -21,7 +23,7 @@ class _ManageAlarmsScreenState extends State<ManageAlarmsScreen> {
 
   // ── CSV column order (must match import parser) ────────────────────────────
   static const _csvHeader =
-      'label,scheduled_at,recurrence,auto_delete,notification_id';
+      'label,scheduled_at,recurrence,auto_delete,notification_id,hourly_interval';
 
   @override
   void initState() {
@@ -32,11 +34,12 @@ class _ManageAlarmsScreenState extends State<ManageAlarmsScreen> {
   Future<void> _loadAlarms() async {
     setState(() => _loading = true);
     final alarms = await DatabaseHelper.instance.getAllAlarms();
-    if (mounted)
+    if (mounted) {
       setState(() {
         _alarms = alarms;
         _loading = false;
       });
+    }
   }
 
   // ── Complete toggle ────────────────────────────────────────────────────────
@@ -158,7 +161,8 @@ class _ManageAlarmsScreenState extends State<ManageAlarmsScreen> {
         '${a.scheduledAt.toIso8601String()},'
         '${a.recurrence.name},'
         '${a.autoDelete ? 1 : 0},'
-        '${a.notificationId}',
+        '${a.notificationId},'
+        '${a.hourlyInterval}',
       );
     }
 
@@ -215,11 +219,18 @@ class _ManageAlarmsScreenState extends State<ManageAlarmsScreen> {
       return;
     }
 
-    // Validate header row
-    if (lines.first.toLowerCase() != _csvHeader.toLowerCase()) {
+    // Validate header row - check for both old and new format
+    final header = lines.first.toLowerCase();
+    const oldHeader =
+        'label,scheduled_at,recurrence,auto_delete,notification_id';
+    final newHeader = _csvHeader.toLowerCase();
+
+    if (header != oldHeader && header != newHeader) {
       _showSnack('Invalid CSV — header does not match expected format');
       return;
     }
+
+    final isOldFormat = header == oldHeader;
 
     int imported = 0;
     int skipped = 0;
@@ -240,6 +251,11 @@ class _ManageAlarmsScreenState extends State<ManageAlarmsScreen> {
         );
         final autoDelete = cols[3] == '1';
 
+        // Parse hourly_interval if available (new format), otherwise default to 1
+        final hourlyInterval = isOldFormat
+            ? 1
+            : (cols.length >= 6 ? (int.tryParse(cols[5]) ?? 1) : 1);
+
         // Safety: never import once-type rows
         if (recurrence == RecurrenceType.once) {
           skipped++;
@@ -259,6 +275,7 @@ class _ManageAlarmsScreenState extends State<ManageAlarmsScreen> {
           recurrence: recurrence,
           autoDelete: autoDelete,
           notificationId: nextId,
+          hourlyInterval: hourlyInterval,
         );
 
         final id = await DatabaseHelper.instance.insertAlarm(alarm);
@@ -475,9 +492,11 @@ class _AlarmCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: recurrenceColor.withOpacity(0.12),
+                  color: recurrenceColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: recurrenceColor.withOpacity(0.3)),
+                  border: Border.all(
+                    color: recurrenceColor.withValues(alpha: 0.3),
+                  ),
                 ),
                 child: Text(
                   alarm.recurrenceLabel,
@@ -497,9 +516,11 @@ class _AlarmCard extends StatelessWidget {
                     vertical: 3,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.10),
+                    color: Colors.red.withValues(alpha: 0.10),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.red.withOpacity(0.25)),
+                    border: Border.all(
+                      color: Colors.red.withValues(alpha: 0.25),
+                    ),
                   ),
                   child: const Text(
                     'Auto-delete',

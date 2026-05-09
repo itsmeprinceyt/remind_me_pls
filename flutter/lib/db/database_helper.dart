@@ -32,7 +32,8 @@ class DatabaseHelper {
             auto_delete     INTEGER NOT NULL DEFAULT 0,
             is_completed    INTEGER NOT NULL DEFAULT 0,
             is_completed_at TEXT,
-            notification_id INTEGER NOT NULL
+            notification_id INTEGER NOT NULL,
+            hourly_interval INTEGER NOT NULL DEFAULT 1
           )
         ''');
       },

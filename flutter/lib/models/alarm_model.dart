@@ -11,6 +11,7 @@ class Alarm {
   final bool isCompleted;
   final DateTime? isCompletedAt; // Last time user toggled completed
   final int notificationId; // flutter_local_notifications id
+  final int hourlyInterval; // Custom hours for hourly recurrence (1-24)
 
   const Alarm({
     this.id,
@@ -21,6 +22,7 @@ class Alarm {
     this.isCompleted = false,
     this.isCompletedAt,
     required this.notificationId,
+    this.hourlyInterval = 1, // Default to 1 hour
   });
 
   // ── Serialisation ──────────────────────────────────────────────────────────
@@ -35,6 +37,7 @@ class Alarm {
       'is_completed': isCompleted ? 1 : 0,
       'is_completed_at': isCompletedAt?.toIso8601String(),
       'notification_id': notificationId,
+      'hourly_interval': hourlyInterval,
     };
   }
 
@@ -53,6 +56,7 @@ class Alarm {
           ? DateTime.parse(map['is_completed_at'] as String)
           : null,
       notificationId: map['notification_id'] as int,
+      hourlyInterval: map['hourly_interval'] as int? ?? 1,
     );
   }
 
@@ -65,6 +69,7 @@ class Alarm {
     bool? isCompleted,
     DateTime? isCompletedAt,
     int? notificationId,
+    int? hourlyInterval,
   }) {
     return Alarm(
       id: id ?? this.id,
@@ -75,6 +80,7 @@ class Alarm {
       isCompleted: isCompleted ?? this.isCompleted,
       isCompletedAt: isCompletedAt ?? this.isCompletedAt,
       notificationId: notificationId ?? this.notificationId,
+      hourlyInterval: hourlyInterval ?? this.hourlyInterval,
     );
   }
 
@@ -90,10 +96,10 @@ class Alarm {
         return scheduledAt;
 
       case RecurrenceType.hourly:
-        // Every hour from the original scheduled time
+        // Every X hours from the original scheduled time
         var next = scheduledAt;
         while (!next.isAfter(base)) {
-          next = next.add(const Duration(hours: 1));
+          next = next.add(Duration(hours: hourlyInterval));
         }
         return next;
 
@@ -131,7 +137,9 @@ class Alarm {
       case RecurrenceType.once:
         return 'Once';
       case RecurrenceType.hourly:
-        return 'Every Hour';
+        return hourlyInterval == 1
+            ? 'Every Hour'
+            : 'Every $hourlyInterval Hours';
       case RecurrenceType.daily:
         return 'Every Day';
       case RecurrenceType.weekly:
