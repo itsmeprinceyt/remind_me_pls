@@ -1,5 +1,7 @@
 # Alarm App — Setup Guide
 
+A Flutter-based alarm/reminder application that allows users to set recurring alarms with labels, date/time picking, and various recurrence options (Once, Hourly, Daily, Weekly, Monthly). Features include auto-delete on completion, persistent storage via SQLite, reliable notifications using flutter_local_notifications, and proper handling of device reboots and timezones.
+
 ## Project Structure
 
 ```
